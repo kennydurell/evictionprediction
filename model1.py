@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import datetime
 from data_processing import data_processing_eviction, data_processing_housing, merge_data
+from pandas.tools.plotting import autocorrelation_plot
 
 from collections import defaultdict
 
@@ -20,41 +21,79 @@ from sklearn.feature_selection import RFECV
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
+from statsmodels.tsa.arima_model import ARIMA
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+
+# df_eviction = pd.read_csv('/home/ubuntu/eviction_data/Eviction_Notices.csv')
+# df_median_housingprice_2 = pd.read_csv('/home/ubuntu/eviction_data/med_sp_zip_code_sf_ca (1).csv')
+
+df_eviction = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evictionprediction/Eviction_Data/Eviction_Notices.csv')
+df_median_housingprice_2 = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evictionprediction/Eviction_Data/med_sp_zip_code_sf_ca (1).csv')
 
 
-def Model(df):
-    y_true_values = defaultdict(list)
-    y_predicted_values = defaultdict(list)
+def model_random_forest(df):
+    #initializing lists and regressor
+    y_true_values = []
+    y_predicted_values = []
     rfr = RandomForestRegressor()
-    list_of_zips = df.zip_code.unique()
+    zip_dict_true =defaultdict(list)
+    zip_dict_predicted = defaultdict(list)
+    rmse_final_dict = {}
 
-    for zip_code in list_of_zips:
-        zip_filtered = df[df['zip_code']==zip_code].sort_values(['Year','Month'])
-        y = zip_filtered.pop('Eviction_Notice')
-        X = zip_filtered
-        mse_by_zip = defaultdict(int)
+    rfr = RandomForestRegressor()
 
-        if len(X.index)>10:
+    #additional data processing to ensure it is in ascending datetime order, with most recent date at bottom
+    merged_sorted = df[['Month', 'Year', 'Month_S','Year_S','zip_code', \
+                        'Month_Year','Eviction_Notice','CASANF0URN_unemployment_year_prior',\
+                        'HC01_VC03']].sort_values(['Month_Year'])
+    merged_sorted['Day_S'] = df['Month_Year'].dt.day
+    merged_sorted = merged_sorted.dropna(subset=['HC01_VC03','CASANF0URN_unemployment_year_prior'])
 
-            tscv = TimeSeriesSplit(n_splits=len(X.index)-1)
+    merged_sorted = merged_sorted.reset_index(drop=True)
 
-            for train_index, test_index in tscv.split(X):
-            #     print("TRAIN:", train_index, "TEST:", test_index)
-                X_train, X_test = X.iloc[train_index], X.iloc[test_index]
-                y_train, y_test = y.iloc[train_index], y.iloc[test_index].values
-                rfr.fit(X_train,y_train)
-                y_hat = rfr.predict(X_test).tolist()
-                y_true_values[zip_code].append(y_test.tolist())
-                y_predicted_values[zip_code].append(y_hat)
+    #creating X and y for regressor. Dropping unnecessary fields for splitting.
+    y = merged_sorted.pop('Eviction_Notice')
+    X = merged_sorted.drop(['Month_Year','Month_S','Year_S','Day_S'], axis=1)
 
-            for zip_code in list_of_zips:
-                if zip_code in y_true_values and zip_code in y_predicted_values:
-                    y_true_values[zip_code] = sum(y_true_values[zip_code],[])
-                    y_predicted_values[zip_code] = sum(y_predicted_values[zip_code],[])
+    #creating list of unique months in the data.
+    months = merged_sorted[merged_sorted['Month_Year']>min(merged_sorted['Month_Year'])][['Year_S','Month_S','Day_S']]
+    months.drop_duplicates(inplace=True)
+    months_list = [datetime.datetime(*x) for x in months.values]
+
+    #for loop allows for cross validation specific to time series, where values
+    #that wouldn't be known at the moment of prediction (i.e. future values and even certain
+    #summary values in the present) aren't used to predict/validate. result is an rmse for evictions by month
+    #for all zips
+
+    i=0
+    for month in months_list:
+        train_indices = merged_sorted[merged_sorted['Month_Year']<month].index
+        test_indices = merged_sorted[merged_sorted['Month_Year']==month].index
+        X_train, X_test = X.iloc[train_indices], X.iloc[test_indices]
+        y_train, y_test = y.iloc[train_indices], y.iloc[test_indices].tolist()
+        rfr.fit(X_train,y_train)
+        y_hat = rfr.predict(X_test).tolist()
+        y_predicted_values.extend(y_hat)
+        y_true_values.extend(y_test)
+        zip_counter=0
+        for zip_code in merged_sorted.iloc[test_indices]['zip_code']:
+            zip_dict_predicted[zip_code].append(y_hat[zip_counter])
+            zip_dict_true[zip_code].append(y_test[zip_counter])
+            zip_counter+=1
+        i+=1
+        print i
+
+    for zip_code in zip_dict_true.keys():
+        rmse_final_dict[zip_code] = (mean_squared_error(zip_dict_true[zip_code],zip_dict_predicted[zip_code]))**0.5
+
+    return y_true_values, y_predicted_values, rmse_final_dict
 
 
-        for zip_code in list_of_zips:
-            if zip_code in y_true_values and zip_code in y_predicted_values:
-                mse_by_zip[zip_code]=mean_squared_error(y_true_values[zip_code],y_predicted_values[zip_code])
 
-    return y_true_values, y_predicted_values, mse_by_zip
+
+if __name__ == '__main__':
+    df_eviction_processed = data_processing_eviction(df_eviction)
+    df_median_housing_processed = data_processing_housing(df_median_housingprice_2)
+    eviction_median_housing = merge_data(df_eviction_processed,df_median_housing_processed)
+    y_true_values, y_predicted_values, rmse_final_dict = model_random_forest(eviction_median_housing)
+    print rmse_final_dict
