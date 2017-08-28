@@ -40,6 +40,13 @@ def data_processing_eviction(df_eviction):
     df_eviction_copy.replace(False,0,inplace=True)
     df_eviction_copy.replace(True,1,inplace=True)
     df_eviction_copy['Eviction_Notice'] = 1
+    # df_eviction_copy = df_eviction_copy[(df_eviction_copy.Development==1)|\
+    #                     (df_eviction_copy['Condo Conversion']==1)|\
+    #                     (df_eviction_copy['Ellis Act WithDrawal']==1)|\
+    #                     (df_eviction_copy['Substantial Rehab']==1)| \
+    #                     (df_eviction_copy['Capital Improvement']==1)|\
+    #                     (df_eviction_copy['Demolition']==1)|\
+    #                     (df_eviction_copy['Owner Move In']==1)]
     df_eviction_copy['File Date'] = pd.to_datetime(df_eviction_copy['File Date'])
     df_eviction_copy['start_of_month_datetime'] = df_eviction_copy['File Date']-pd.offsets.MonthBegin(1)
     df_eviction_copy = df_eviction_copy.groupby(['start_of_month_datetime', 'Eviction Notice Source Zipcode']).sum().reset_index()
@@ -102,7 +109,7 @@ def merge_data(df_eviction,df_median_housing_price, df_census, df_unemployment):
 
     df_census['HC01_VC03']=df_census['HC01_VC03'].astype(int)
     df_census['GEO.id2']= df_census['GEO.id2'].astype(str)
-    
+
     merged_df = pd.merge(df_eviction,df_median_housing_price,how='left',\
         left_on=['Eviction Notice Source Zipcode','start_of_month_datetime'],\
         right_on=['zip_code','period_begin'])
@@ -132,6 +139,7 @@ def merge_data(df_eviction,df_median_housing_price, df_census, df_unemployment):
     merged_df['three_years_prior']=merged_df['Year_S']-3
     merged_df['four_years_prior']=merged_df['Year_S']-4
     merged_df['five_years_prior']=merged_df['Year_S']-5
+    merged_df['datetime_six_months_prior']=merged_df['Month_Year']-pd.offsets.MonthBegin(6)
     #
     merged_df = pd.merge(merged_df,merged_df[['Eviction_Notice','Month_Year','zip_code']], how='left', left_on=['one_month_prior','zip_code'],right_on= ['Month_Year','zip_code'], suffixes=('','_one_month_prior'))
     merged_df = pd.merge(merged_df,df_census[['GEO.id2','HC01_VC03','Year']],how='left',left_on=['zip_code', 'one_year_prior'], right_on=['GEO.id2','Year'], suffixes=('','_year_prior'))
@@ -140,10 +148,13 @@ def merge_data(df_eviction,df_median_housing_price, df_census, df_unemployment):
     merged_df = pd.merge(merged_df,df_census[['GEO.id2','HC01_VC03','Year']],how='left',left_on=['zip_code', 'four_years_prior'], right_on=['GEO.id2','Year'], suffixes=('','_four_years_prior'))
     merged_df = pd.merge(merged_df,df_census[['GEO.id2','HC01_VC03','Year']],how='left',left_on=['zip_code', 'five_years_prior'], right_on=['GEO.id2','Year'], suffixes=('','_five_years_prior'))
 
-
+    df_unemployment['DATE'] = pd.to_datetime(df_unemployment.DATE)
     merged_df = pd.merge(merged_df,df_unemployment ,how ='left', left_on=['datetime_one_year_prior'], right_on=['DATE'], suffixes=('','_unemployment_year_prior'))
+    merged_df = pd.merge(merged_df,df_unemployment ,how ='left', left_on=['datetime_six_months_prior'], right_on=['DATE'], suffixes=('','_unemployment_six_months_prior'))
 
     return merged_df
+
+
 
 def time_window_aggregate(df, feature,func,time_window):
     '''

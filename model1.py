@@ -3,7 +3,7 @@ import pandas as pd
 import datetime
 from data_processing import data_processing_eviction, data_processing_housing, merge_data
 from pandas.tools.plotting import autocorrelation_plot
-
+from baseline_model import baseline_model
 from collections import defaultdict
 
 # Modelling Algorithms
@@ -29,13 +29,14 @@ from statsmodels.tsa.statespace.sarimax import SARIMAX
 
 df_eviction = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evictionprediction/Eviction_Data/Eviction_Notices.csv')
 df_median_housingprice_2 = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evictionprediction/Eviction_Data/med_sp_zip_code_sf_ca (1).csv')
+df_census = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evictionprediction/Eviction_Data/ACS_data_total.csv')
+df_unemployment = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evictionprediction/Eviction_Data/Unemployment_Rate.csv')
 
-
-def model_random_forest(df):
+def model_random_forest(df, num_estimators, m_features):
     #initializing lists and regressor
     y_true_values = []
     y_predicted_values = []
-    rfr = RandomForestRegressor()
+    rfr = RandomForestRegressor(n_estimators = num_estimators, max_features=m_features )
     zip_dict_true =defaultdict(list)
     zip_dict_predicted = defaultdict(list)
     rmse_final_dict = {}
@@ -44,10 +45,9 @@ def model_random_forest(df):
 
     #additional data processing to ensure it is in ascending datetime order, with most recent date at bottom
     merged_sorted = df[['Month', 'Year', 'Month_S','Year_S','zip_code', \
-                        'Month_Year','Eviction_Notice','CASANF0URN_unemployment_year_prior',\
-                        'HC01_VC03']].sort_values(['Month_Year'])
+                        'Month_Year','Eviction_Notice','CASANF0URN', 'CASANF0URN_unemployment_six_months_prior','HC01_VC03','median_sale_price_one_year_prior','Eviction_Notice_one_month_prior']].sort_values(['Month_Year'])
     merged_sorted['Day_S'] = df['Month_Year'].dt.day
-    merged_sorted = merged_sorted.dropna(subset=['HC01_VC03','CASANF0URN_unemployment_year_prior'])
+    merged_sorted = merged_sorted.dropna(subset=['CASANF0URN','CASANF0URN_unemployment_six_months_prior','HC01_VC03','median_sale_price_one_year_prior','Eviction_Notice_one_month_prior'])
 
     merged_sorted = merged_sorted.reset_index(drop=True)
 
@@ -71,6 +71,11 @@ def model_random_forest(df):
         test_indices = merged_sorted[merged_sorted['Month_Year']==month].index
         X_train, X_test = X.iloc[train_indices], X.iloc[test_indices]
         y_train, y_test = y.iloc[train_indices], y.iloc[test_indices].tolist()
+        for zip_code in X_train['zip_code'].unique():
+            indices_2 = X_train[X_train.zip_code==zip_code].index
+            for i,value in y_train.iloc[indices_2].iteritems():
+                if value>(y_train.iloc[indices_2].mean()+ y_train.iloc[indices_2].std()*2):
+                    y_train.iloc[i]=y_train.iloc[indices_2].mean()
         rfr.fit(X_train,y_train)
         y_hat = rfr.predict(X_test).tolist()
         y_predicted_values.extend(y_hat)
@@ -89,11 +94,32 @@ def model_random_forest(df):
     return y_true_values, y_predicted_values, rmse_final_dict
 
 
+def rf_cv(df):
+    y_true_values, y_predicted_values, rmse_final_dict = model_random_forest(df, num_estimators=10, m_features='auto')
+    y_true, y_predict, baseline = baseline_model(df)
+    comparison = rmse_final_dict
+    second_dict ={}
+
+    n_estimators = [10,40,80,200,1000]
+    max_features =[2,4,'auto']
+
+    for estimator in n_estimators:
+        for feature in max_features:
+            y_true_values, y_predicted_values, rmse_final_dict_cv = model_random_forest(df, num_estimators=n_estimators, m_features = max_features)
+            for zip_code in rmse_final_dict_cv.keys():
+                if rmse_final_dict_cv[zip_code] - comparison[zip_code] < 0:
+                    baseline_diff = rmse_final_dict_cv[zip_code] - baseline[zip_code]
+                    second_dict[zip_code]=(rmse_final_dict_cv[zip_code],baseline_diff,[estimator,feature])
+                else:
+                    baseline_diff_2 = comparison[zip_code] - baseline[zip_code]
+                    second_dict[zip_code] = (comparison[zip_code],baseline_diff_2,[10,'auto'])
+    return second_dict
 
 
 if __name__ == '__main__':
     df_eviction_processed = data_processing_eviction(df_eviction)
     df_median_housing_processed = data_processing_housing(df_median_housingprice_2)
-    eviction_median_housing = merge_data(df_eviction_processed,df_median_housing_processed)
-    y_true_values, y_predicted_values, rmse_final_dict = model_random_forest(eviction_median_housing)
+    eviction_median_housing = merge_data(df_eviction_processed,df_median_housing_processed, df_census, df_unemployment)
+    #y_true_values, y_predicted_values, rmse_final_dict = model_random_forest(eviction_median_housing,10,'auto')
+    rmse_final_dict = rf_cv(eviction_median_housing)
     print rmse_final_dict
