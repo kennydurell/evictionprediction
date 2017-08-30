@@ -34,7 +34,7 @@ import matplotlib.pyplot as plt
 
 #importing files
 df_eviction = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evictionprediction/Eviction_Data/Eviction_Notices.csv')
-df_median_housingprice_2 = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evictionprediction/Eviction_Data/med_sp_zip_code_sf_ca (1).csv')
+df_median_housing_price = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evictionprediction/Eviction_Data/med_sp_zip_code_sf_ca (1).csv')
 df_census = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evictionprediction/Eviction_Data/ACS_data_total.csv')
 df_unemployment = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evictionprediction/Eviction_Data/Unemployment_Rate.csv')
 
@@ -184,7 +184,30 @@ def arimax_by_zip (df):
     sorted_2['Day_S'] = sorted_2['Month_Year'].dt.day
     sorted_2.dropna(subset=['CASANF0URN','CASANF0URN_unemployment_six_months_prior'], inplace=True)
     sorted_2.reset_index(inplace=True)
-    zip_dict = zip_code_cv(df)
+    zip_dict = {'94102': [(2, 1, 1), 532.5856587200159],
+ '94103': [(0, 1, 1), 803.3662428898983],
+ '94104': ['order', 40000000000],
+ '94105': [(5, 0, 0), 13.658867630369574],
+ '94107': [(0, 0, 0), 271.72564884092628],
+ '94108': [(0, 0, 0), 309.45002369236113],
+ '94109': [(1, 1, 1), 513.2303675590061],
+ '94110': [(4, 1, 1), 558.9043335374527],
+ '94111': [(0, 0, 0), 59.731675440435893],
+ '94112': [(1, 1, 1), 489.46407667582207],
+ '94114': [(0, 1, 1), 437.10399266503805],
+ '94115': [(1, 1, 1), 425.69702383134984],
+ '94116': [(0, 1, 1), 387.8427126258089],
+ '94117': [(0, 1, 1), 484.74695270219246],
+ '94118': [(0, 1, 1), 424.40096173225675],
+ '94121': [(0, 1, 1), 442.91657962821625],
+ '94122': [(2, 1, 1), 451.9743459843794],
+ '94123': [(0, 0, 0), 385.11084487071133],
+ '94124': [(0, 1, 1), 404.7179036313577],
+ '94127': [(0, 0, 0), 193.42690896197888],
+ '94131': [(2, 0, 1), 353.0419882704688],
+ '94132': [(0, 1, 1), 768.1951226809797],
+ '94133': [(0, 1, 1), 475.35291292581576],
+ '94134': [(3, 1, 1), 363.41584411489987]}
     rmse_dict = {'94102': [40000000, 'none'],
  '94103': [40000000, 'none'],
  '94107': [40000000, 'none'],
@@ -216,6 +239,7 @@ def arimax_by_zip (df):
     months_list = [datetime.datetime(*x) for x in months.values]
     error_counter=0
     forecasted_dict= {}
+    new_df = pd.DataFrame(columns=['zip_code','Date','true','forecasted'])
     true_dict = {}
     months_dict = {}
     for std in std_list:
@@ -264,8 +288,12 @@ def arimax_by_zip (df):
                 true_dict[zip_code]=true[zip_code]
                 months_dict[zip_code]=months[zip_code]
                 rmse_dict[zip_code]=[rmse,std]
+
     return rmse_dict,true_dict, forecasted_dict, months_dict
 
+
+def dataframe_transform(true_dict,forecasted_dict,months_dict):
+    forecasted_dict[zip_code]
 
 def arimax_overall (df):
     plt.gcf().clear()
@@ -279,7 +307,7 @@ def arimax_overall (df):
     months_list = [datetime.datetime(*x) for x in months.values]
 
     sorted_2=sorted_2.groupby('Month_Year').sum().reset_index()
-    
+
     params = arima_by_month_cv(df)
     forecasted =[]
     true = []
@@ -320,6 +348,7 @@ def arimax_overall (df):
 def plot_predictions(true_array,forecasted_array, months_array,zip_code=None):
 
     if zip_code != None:
+        ax = true_array[zip_code].plot(label='observed')
         plt.plot(months_array[zip_code],true_array[zip_code])
         plt.plot(months_array[zip_code],forecasted_array[zip_code])
         plt.legend()
@@ -414,7 +443,7 @@ def param_check_by_zip (df, zip_code):
 
 
 if __name__ == '__main__':
-    eviction_median_housing = transform_merge_data(df_eviction,df_median_housing_price_2, df_census, df_unemployment)
+    eviction_median_housing = transform_merge_data(df_eviction,df_median_housing_price, df_census, df_unemployment)
     rmse_dict, true, forecasted, months = arimax_by_zip(eviction_median_housing)
     plot_models(rmse_dict,true,forecasted,months)
 
