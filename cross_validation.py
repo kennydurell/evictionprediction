@@ -10,7 +10,8 @@ from data_processing_refactor import transform_merge_data
 from pandas.tools.plotting import autocorrelation_plot
 
 from collections import defaultdict
-
+#from arima_models import arimax_by_zip
+from baseline_model import baseline_model
 # Modelling Algorithms
 from sklearn.ensemble import RandomForestClassifier , GradientBoostingClassifier
 
@@ -33,51 +34,81 @@ df_eviction = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evictionpr
 df_median_housing_price = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evictionprediction/Eviction_Data/med_sp_zip_code_sf_ca (1).csv')
 df_census = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evictionprediction/Eviction_Data/ACS_data_total.csv')
 df_unemployment = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evictionprediction/Eviction_Data/Unemployment_Rate.csv')
+df_capital_improvements = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evictionprediction/Eviction_Data/Petitions_to_the_Rent_Board.csv')
 
 
 
 
 
+# def zip_code_cv(df):
+#     zip_code_arima_best =defaultdict(list)
+#     i=0
+#     for zip_code in df['Address_Zipcode'].unique():
+#         results_list = arimax_by_zip_cv(df, zip_code)
+#         zip_code_arima_best[zip_code] = results_list
+#         i+=1
+#         print i
+#     return zip_code_arima_best
 
-def zip_code_cv(df):
-    zip_code_arima_best =defaultdict(list)
-    i=0
-    for zip_code in df['Address_Zipcode'].unique():
-        results_list = arimax_by_zip_cv(df, zip_code)
-        zip_code_arima_best[zip_code] = results_list
-        i+=1
-        print i
-    return zip_code_arima_best
 
-
-def arimax_by_zip_cv (df,zip_code):
+def arimax_by_zip_cv (df):
 
     p = range(0,6)
     d= range(0,2)
     q= range(0,2)
     # Generate all different combinations of p, q and q triplets
     pdq = list(itertools.product(p, d, q))
+    cv_dict = {}
+    baseline_diff = {}
+    y_true, y_predict, baseline = baseline_model(df)
 
-    sorted_df = df[['Month_Year','Eviction_Notice','Address_Zipcode']].sort_values(['Month_Year'])
-    sorted_df['Eviction_Notice']= sorted_df['Eviction_Notice'].astype(float)
+    std_list = [1,2,3,4,6,10]
 
-    aic_list = ['param',400000000]
+    zip_dict = {'94102': [(5, 1, 0),3],
+            '94103': [(0, 1, 1),3],
+             '94105': [(0, 0, 0),3],
+             '94107': [(0, 0, 0),3],
+             '94108': [(0, 1, 1),3],
+             '94109': [(0, 1, 1),3],
+             '94110': [(1, 1, 1),3],
+             '94111': [(0, 0, 0),3],
+             '94112': [(2, 1, 1),3],
+             '94114': [(0, 1, 1),3],
+             '94115': [(1, 1, 1),3],
+             '94116': [(0, 1, 1),3],
+             '94117': [(2, 1, 1),3],
+             '94118': [(0, 1, 1),3],
+             '94121': [(0, 1, 1),3],
+             '94122': [(0, 1, 1),3],
+             '94123': [(0, 1, 1),3],
+             '94124': [(0, 1, 1),3],
+             '94127': [(0, 0, 0),3],
+             '94131': [(0, 0, 0),3],
+             '94132': [(0, 1, 1),3],
+             '94133': [(0, 1, 1),3],
+             '94134': [(1, 1, 1),3],
+             '94158': [(0, 1, 0),3],
+             'Unknown_ZIP': [(4, 1, 1),3]}
+    predictions_df, rmse_final_dict_cv = arimax_by_zip(df, zip_param_dictionary=zip_dict)
+    comparison_dict = rmse_final_dict_cv
+    zip_dict_test = zip_dict.copy()
+
+
     i=0
+    for std in std_list:
+        for param in pdq:
+            zip_dict_test = {x:[param,std] for x in zip_dict_test}
+            print zip_dict_test
+            break
+            predictions_df, rmse_final_dict = arimax_by_zip(df,zip_param_dictionary=zip_dict_test)
+            for zip_code in comparison_dict.iterkeys():
+                if rmse_final_dict[zip_code]<comparison_dict[zip_code]:
+                    comparison_dict[zip_code]=rmse_final_dict[zip_code]
+                    baseline_diff[zip_code] = rmse_final_dict[zip_code] - baseline[zip_code]
+                    cv_dict[zip_code]=[param,std]
 
-    y_train = sorted_df[sorted_df['Address_Zipcode']==zip_code][['Month_Year','Eviction_Notice']].set_index(['Month_Year'], inplace=False)
+    return comparison_dict, cv_dict, baseline_dff
 
-    for param in pdq:
-        try:
-            mod = ARIMA(endog=y_train,order=param)
-            results = mod.fit()
-            if results.aic<aic_list[1]:
-                aic_list=[param,results.aic]
-            i+=1
-            print i
-        except:
-            continue
-
-    return aic_list
 
 def arima_by_month_cv (df):
     p = range(0,8)
@@ -109,7 +140,7 @@ def arima_by_zip_data_transform(df):
     sorted_2 = df.sort_values(['Month_Year'])
     sorted_2['Eviction_Notice']= sorted_2['Eviction_Notice'].astype(float)
     sorted_2['Day_S'] = sorted_2['Month_Year'].dt.day
-    #sorted_2.dropna(subset=['CASANF0URN','percent_white_population_previous_year'], inplace=True)
+    sorted_2.dropna(subset=['CASANF0URN'], inplace=True)
     sorted_2.reset_index(inplace=True)
 
     return sorted_2

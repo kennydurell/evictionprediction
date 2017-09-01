@@ -17,7 +17,7 @@ df_eviction = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evictionpr
 df_median_housingprice = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evictionprediction/Eviction_Data/med_sp_zip_code_sf_ca (1).csv')
 df_census = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evictionprediction/Eviction_Data/ACS_data_total.csv')
 df_unemployment = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evictionprediction/Eviction_Data/Unemployment_Rate.csv')
-
+df_capital_improvements = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evictionprediction/Eviction_Data/Petitions_to_the_Rent_Board.csv')
 
 def eviction_datetime_shift (df_eviction):
 
@@ -79,7 +79,6 @@ def housing_add_time_lags(df_median_housing_price,list_of_time_lags):
 def housing_select_columns(df_median_housing_price,selected_columns):
 
     df_median_housing_price = df_median_housing_price[selected_columns]
-
     df_median_housing_price['zip_code']=df_median_housing_price['zip_code'].astype(str)
 
     return df_median_housing_price
@@ -94,7 +93,6 @@ def data_processing_housing(df_median_housing_price):
     '''
 
     datetime_shifted_df = housing_datetime_shift(df_median_housing_price)
-
     time_lagged_df = housing_add_time_lags(datetime_shifted_df, ['one_month_prior','three_months_prior',\
                                                                     'six_months_prior','one_year_prior'])
     columns_to_select = ['zip_code','period_begin',\
@@ -131,7 +129,10 @@ def merged_data_datetime_shift(merged_df):
     merged_df['four_years_prior']=merged_df['Year_S']-4
     merged_df['five_years_prior']=merged_df['Year_S']-5
     merged_df['datetime_six_months_prior']=merged_df['Month_Year']-pd.offsets.MonthBegin(6)
-    merged_df['datetime_one_year_prior']=merged_df['Month_Year']-pd.Timedelta(days=365)
+    merged_df['datetime_one_year_prior']=merged_df['Month_Year']-pd.offsets.MonthBegin(12)
+    merged_df['datetime_two_years_prior']=merged_df['Month_Year']-pd.offsets.MonthBegin(24)
+
+
     # merged_df = pd.merge(merged_df,merged_df[['Eviction_Notice','Month_Year','zip_code']],\
     #                                             how='left', left_on=['one_month_prior','zip_code'],\
     #                                             right_on= ['Month_Year','zip_code'], \
@@ -147,6 +148,7 @@ def census_merge(merged_df, df_census):
     merged_df = pd.merge(merged_df,df_census,how='left',left_on=['Address_Zipcode', 'four_years_prior'], right_on=['GEO.id2','Year'], suffixes=('','_four_years_prior'))
     merged_df = pd.merge(merged_df,df_census,how='left',left_on=['Address_Zipcode', 'five_years_prior'], right_on=['GEO.id2','Year'], suffixes=('','_five_years_prior'))
     merged_df = merged_df.rename(columns={'Estimate; RACE - One race - Black or African American':'Black_population_previous_year','Percent; RACE - One race - White':'percent_white_population_previous_year'})
+
     return merged_df
 
 def unemployment_merge(merged_df,df_unemployment):
@@ -161,7 +163,22 @@ def housing_merge(df_eviction_processed,df_median_housing_price_processed):
     eviction_housing_merged_df = pd.merge(df_eviction_processed,df_median_housing_price_processed,how='left',\
         left_on=['Address_Zipcode','start_of_month_datetime'],\
         right_on=['zip_code','period_begin'])
+
     return eviction_housing_merged_df
+
+def capital_improvement_merge(df,capital_improvement_filtered_df):
+    merged = pd.merge(df,capital_improvement_filtered_df,how='left',left_on=['Address_Zipcode','datetime_one_year_prior'], right_on=['Petition Source Zipcode','Date Filed'])
+    merged_2 = pd.merge(merged,capital_improvement_filtered_df,how='left',left_on=['Address_Zipcode','datetime_six_months_prior'], right_on=['Petition Source Zipcode','Date Filed'],suffixes=('','_six_months_prior'))
+    merged_3 = pd.merge(merged_2,capital_improvement_filtered_df,how='left',left_on=['Address_Zipcode','datetime_two_years_prior'], right_on=['Petition Source Zipcode','Date Filed'],suffixes=('','_two_years_prior'))
+
+    return merged_3
+
+def capital_improvement_cleaning(df_capital_improvements):
+    capital_improvement_filtered = df_capital_improvements[['Petition Source Zipcode','Date Filed','Ground (landlord): Capital Improvement']]
+    capital_improvement_filtered['Date Filed'] = pd.to_datetime(capital_improvement_filtered['Date Filed']) - pd.offsets.MonthBegin(1)
+    capital_improvement_group_by = capital_improvement_filtered.groupby(['Date Filed','Petition Source Zipcode']).sum().reset_index()
+
+    return capital_improvement_group_by
 
 def transform_merge_data(df_eviction,df_median_housing_price, df_census, df_unemployment):
     '''Performs a variety of transformations and merges with eviction and housing price data
@@ -173,29 +190,22 @@ def transform_merge_data(df_eviction,df_median_housing_price, df_census, df_unem
     df_census: aggregated data from the American Community Survey: https://www.census.gov/programs-surveys/acs/
     df_unemployment: unemployment percentage by month for the city of SF: https://fred.stlouisfed.org/series/CASANF0URN'''
 
+    #cleaning/datetime shifting/transformations of datasets
+    cleaned_census_df = census_cleaning(df_census)
+    capital_improvement_filtered_df = capital_improvement_cleaning(df_capital_improvements)
     df_eviction_processed = data_processing_eviction(df_eviction)
     df_median_housing_price_processed = data_processing_housing(df_median_housingprice)
+
+    #merging datasets into single dataframe
     eviction_housing_merged_df = housing_merge(df_eviction_processed,df_median_housing_price_processed)
     datetime_shifted_df = merged_data_datetime_shift(eviction_housing_merged_df)
-    cleaned_census_df = census_cleaning(df_census)
     census_merged_df = census_merge(datetime_shifted_df,cleaned_census_df)
     unemployment_merged_df= unemployment_merge(census_merged_df,df_unemployment)
-    final_merged_df = unemployment_merged_df
+    capital_improvement_merged_df = capital_improvement_merge(unemployment_merged_df, capital_improvement_filtered_df)
+    final_merged_df = capital_improvement_merged_df
 
     return final_merged_df
 
-
-    # merged_df = pd.merge(merged_df[['Month', 'Year', 'zip_code', 'median_sale_price_one_month_prior',\
-    #     u'median_sale_price_three_months_prior',u'median_sale_price_six_months_prior',\
-    #     u'median_sale_price_one_year_prior','Eviction_Notice', 'Month_Year', 'Month_S', 'Year_S','one_month_prior']],\
-    #     merged_df[['Eviction_Notice','Month_Year','zip_code']], how='left', \
-    #     left_on=['one_month_prior','zip_code'],right_on= ['Month_Year','zip_code'], suffixes=('','_one_month_prior'))
-    #
-
-    # merged_df = merged_df.dropna(subset = ['period_begin','median_sale_price_one_month_prior',\
-    #     'median_sale_price_one_year_prior', 'median_sale_price_six_months_prior','median_sale_price_three_months_prior']).sort_values('period_begin')
-
-    #
 
 def y_train_sort(df):
     params = {'94102': [(2, 1, 1), 532.5856587200159],
