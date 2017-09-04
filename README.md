@@ -23,7 +23,7 @@ Unemployment by Month - San Francisco
 Most of the data munging/processing is done with the code in the data_processing folder. If there is additional pre-processing needed, I've listed this in the doc string.
 
 # Results
-I combined a top-down hierarchical ARIMAX model with a random forest regressor to achieve the lowest root mean squared error on unseen eviction data. Predicting outliers/spikes is extremely difficult, but I was able to improve upon the baseline in that regard and minimize their latent impact on future predictions in the process. 
+I combined a top-down hierarchical ARIMAX model with a random forest regressor to achieve the lowest root mean squared error on unseen eviction data. Predicting outliers/spikes is extremely difficult, but I was able to improve upon the baseline in that regard and minimize their latent impact on future predictions in the process.
 
 
 # Ongoing Work
