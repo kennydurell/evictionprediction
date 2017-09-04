@@ -22,9 +22,12 @@ Unemployment by Month - San Francisco
 
 Most of the data munging/processing is done with the code in the data_processing folder. If there is additional pre-processing needed, I've listed this in the doc string. 
 
+# Results
+I combined a top-down hierarchical ARIMAX model with a random forest regressor to achieve the lowest root mean squared error on unseen eviction data. Predicting outliers/spikes is extremely difficult, but I was able to improve upon the baseline in that regard and minimize their latent impact on future predictions in the process. 
+
 
 # Ongoing Work
-Currently, the model only works with whatever data you've provided; the next step is to pull regularly from the OpenDataSF and the Department of Labor APIs to update the model with new eviction data and unemployment data and improve its ability to forecast.
+Currently, the model only works with whatever data you've provided; the next step is to pull regularly from the OpenDataSF and the Department of Labor APIs to update the model with new data and improve its ability to forecast.
 
 Likewise, proximity to ZIPs that had a large number of evictions in previous months may be in an indicator of an increases in evictions. This, along with feature engineering around changes in rental price over time as well as digging deeper into the large building permit dataset will be my next steps.
 
