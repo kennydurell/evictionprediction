@@ -8,10 +8,12 @@ import datetime
 
 from data_processing_refactor import transform_merge_data
 from pandas.tools.plotting import autocorrelation_plot
+#from arima_models import arimax_by_month
 
 from collections import defaultdict
-#from arima_models import arimax_by_zip
 from baseline_model import baseline_model
+from random_forest_model import model_random_forest
+
 # Modelling Algorithms
 from sklearn.ensemble import RandomForestClassifier , GradientBoostingClassifier
 
@@ -116,37 +118,34 @@ def arima_by_month_cv (df):
     q= range(1,3)
     # Generate all different combinations of p, q and q triplets
     pdq = list(itertools.product(p, d, q))
+    std_list = [0,1,2,3,5,10]
 
-    sorted_df = df[['Month_Year','Eviction_Notice']].sort_values(['Month_Year'])
-    sorted_df['Eviction_Notice']= sorted_df['Eviction_Notice'].astype(float)
-    y_train=sorted_df.set_index(['Month_Year'], inplace=False)
 
-    aic_list = ['param',400000000]
+    param_list = ['param',400000000,3]
     i=0
     for param in pdq:
-        try:
-            mod = ARIMA(endog=y_train,order=param)
-            results = mod.fit()
-            if results.aic<aic_list[1]:
-                aic_list=[param,results.aic]
+        for std in std_list:
+            predictions_df, rmse = arimax_by_month(df,param,std)
+
+            if rmse<param_list[1]:
+                param_list = [param,rmse,std]
             i+=1
             print i
-        except:
-            continue
-    return aic_list
+    return param_list
 
 
 def arima_by_zip_data_transform(df):
     sorted_2 = df.sort_values(['Month_Year'])
     sorted_2['Eviction_Notice']= sorted_2['Eviction_Notice'].astype(float)
     sorted_2['Day_S'] = sorted_2['Month_Year'].dt.day
-    sorted_2.dropna(subset=['CASANF0URN'], inplace=True)
-    sorted_2.reset_index(inplace=True)
+    sorted_2['CASANF0URN'] = sorted_2['CASANF0URN'].apply(lambda x:-1000 if pd.isnull(x) else x)
+    sorted_2 =sorted_2.reset_index(inplace=False)
+    # sorted_2.pop('index')
 
     return sorted_2
 
 def arima_by_zip_months(transformed_df):
-    months = transformed_df[transformed_df['Month_Year']>(min(transformed_df['Month_Year'])+pd.offsets.MonthBegin(3))][['Year_S','Month_S','Day_S']]
+    months = transformed_df[transformed_df['Month_Year']>(min(transformed_df['Month_Year'])+pd.offsets.MonthBegin(6))][['Year_S','Month_S','Day_S']]
     months.drop_duplicates(inplace=True)
     months_list = [datetime.datetime(*x) for x in months.values]
 
@@ -224,3 +223,27 @@ def sarimax_by_zip_cv (df, zip_code):
             except:
                 continue
     return results, pdq_best, seasonal_best
+
+
+def rf_cv(df):
+    predictions_df, rmse_final_dict = model_random_forest(df, num_estimators=10, m_features='auto',std=3)
+    y_true, y_predict, baseline = baseline_model(df)
+    comparison = rmse_final_dict
+    second_dict ={}
+
+    n_estimators = [10,40,80,200,1000]
+    max_features =[2,4,'auto']
+    std_list=[1,2,3,4]
+
+    for estimator in n_estimators:
+        for feature in max_features:
+            for std in std_list:
+                predictions_df, rmse_final_dict_cv = model_random_forest(df, num_estimators=estimator, m_features = feature, std=std)
+                for zip_code in rmse_final_dict_cv.keys():
+                    if rmse_final_dict_cv[zip_code] - comparison[zip_code] < 0:
+                        baseline_diff = rmse_final_dict_cv[zip_code] - baseline[zip_code]
+                        second_dict[zip_code]=(rmse_final_dict_cv[zip_code],baseline_diff,[estimator,feature,std])
+                    else:
+                        baseline_diff_2 = comparison[zip_code] - baseline[zip_code]
+                        second_dict[zip_code] = (comparison[zip_code],baseline_diff_2,[10,'auto',3])
+    return second_dict

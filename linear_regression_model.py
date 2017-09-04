@@ -54,50 +54,51 @@ df_capital_improvements = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Cours
 
 def run_all_models(df_eviction,df_median_housing_price,df_census,df_unemployment):
     eviction_median_housing = transform_merge_data(df_eviction,df_median_housing_price, df_census, df_unemployment)
-    zip_param_dictionary = {'94102': [(5, 1, 0),3],
-                '94103': [(0, 1, 1),3],
-                 '94105': [(0, 0, 0),3],
-                 '94107': [(0, 0, 0),3],
-                 '94108': [(0, 1, 1),3],
-                 '94109': [(0, 1, 1),3],
-                 '94110': [(1, 1, 1),3],
-                 '94111': [(0, 0, 0),3],
-                 '94112': [(2, 1, 1),3],
-                 '94114': [(0, 1, 1),3],
-                 '94115': [(1, 1, 1),3],
-                 '94116': [(0, 1, 1),3],
-                 '94117': [(2, 1, 1),3],
-                 '94118': [(0, 1, 1),3],
-                 '94121': [(0, 1, 1),3],
-                 '94122': [(0, 1, 1),3],
-                 '94123': [(0, 1, 1),3],
-                 '94124': [(0, 1, 1),3],
-                 '94127': [(0, 0, 0),3],
-                 '94131': [(0, 0, 0),3],
-                 '94132': [(0, 1, 1),3],
-                 '94133': [(0, 1, 1),3],
-                 '94134': [(1, 1, 1),3],
-                 '94158': [(0, 1, 0),3],
-                 'Unknown_ZIP': [(4, 1, 1),3]}
+    zip_param_dictionary = {'94102': [(2, 1, 0),(1,0,0,6),4],
+                '94103': [(0, 1, 1),(1,0,0,6),3],
+                 '94105': [(0, 0, 0),(0,0,0,0),4],
+                 '94107': [(3, 0, 0),(1,0,0,8),4],
+                 '94108': [(0, 1, 1),(1,0,0,6),4],
+                 '94109': [(0, 1, 1),(1,0,0,9),4],
+                 '94110': [(7, 1, 1),(2,0,0,7),4],
+                 '94111': [(0, 0, 0),(1,0,0,6),4],
+                 '94112': [(2, 1, 1),(1,0,0,12),4],
+                 '94114': [(1, 1, 1),(1,0,0,7),4],
+                 '94115': [(1, 1, 1),(2,0,0,3),4],
+                 '94116': [(1, 1, 1),(2,0,0,7),4],
+                 '94117': [(2, 1, 1),(2,0,0,7),4],
+                 '94118': [(1, 1, 1),(2,0,0,7),4],
+                 '94121': [(1, 1, 1),(2,0,0,7),4],
+                 '94122': [(1, 1, 1),(2,0,0,7),4],
+                 '94123': [(0, 1, 1),(1,0,0,12),4],
+                 '94124': [(0, 1, 1),(4,0,0,3),4],
+                 '94127': [(1, 0, 0),(1,0,0,3),4],
+                 '94131': [(1, 0, 0),(1,0,0,3),4],
+                 '94132': [(0, 1, 1),(1,0,0,6),3],
+                 '94133': [(3, 1, 1),(2,0,0,6),4],
+                 '94134': [(3, 1, 1),(2,0,0,6),4],
+                 '94158': [(0, 1, 0),(1,0,0,6),4],
+                 'Unknown_ZIP': [(4, 1, 1),(0,0,0,0),4]}
     #models
-    random_forest_df, rmse_by_zip_dict = model_random_forest(eviction_median_housing,10,'auto')
-    arimax_by_zip_df, rmse = arimax_by_zip(eviction_median_housing, zip_param_dictionary)
     top_down_by_zip_df = top_down_estimation_by_zip(eviction_median_housing)
+    arimax_by_zip_df, rmse = arimax_by_zip(eviction_median_housing, zip_param_dictionary)
+    random_forest_df, importance_dict = model_random_forest(eviction_median_housing,10,'auto')
+
 
     #linear regression combination of all models
-    merged_predictions = linear_regression_combination(arimax_by_month_df, top_down_by_zip_df, random_forest_df)
+    merged_predictions = linear_regression_combination(arimax_by_zip_df, top_down_by_zip_df, random_forest_df)
 
     return merged_predictions
 
 
 def linear_regression_combination(arimax_by_zip_df, top_down_arimax_df, random_forest_df):
 
-    merged_predictions_1 = pd.merge(arimax_by_zip_df,top_down_arimax_df[['predicted_by_zip_evictions','Month_Year','Address_Zipcode']],\
-                            how='inner',left_on=['zip_code','month_year'],right_on= ['Address_Zipcode','Month_Year'],suffixes=('','_top_down_arimax'))
+    merged_predictions_1 = pd.merge(arimax_by_zip_df,top_down_arimax_df[['predicted_evictions_by_zip','Month_Year','Address_Zipcode','months_ahead']],\
+                            how='inner',left_on=['zip_code','month_year','months_ahead'],right_on= ['Address_Zipcode','Month_Year','months_ahead'],suffixes=('','_top_down_arimax'))
     merged_predictions_2 = pd.merge(merged_predictions_1,random_forest_df,how='inner',\
-                                    on= ['zip_code','month_year'], suffixes= ('','_random_forest'))
-
-    months = merged_predictions_2[merged_predictions_2>(min(merged_predictions_2['month_year']))]['month_year']
+                                    on= ['zip_code','month_year','months_ahead'], suffixes= ('','_random_forest'))
+    months_ahead_prediction_df = merged_predictions_2[merged_predictions_2.months_ahead==3]
+    months = months_ahead_prediction_df[months_ahead_prediction_df>(min(months_ahead_prediction_df['month_year'])+pd.offsets.MonthBegin(3))]['month_year']
     months.dropna(inplace=True)
     months_list = months.drop_duplicates(inplace=False)
 
@@ -107,16 +108,15 @@ def linear_regression_combination(arimax_by_zip_df, top_down_arimax_df, random_f
 
 
 
-
     i=0
     for month in months_list:
         #train_test_split
-        train = merged_predictions_2[merged_predictions_2['month_year']<month]
-        test = merged_predictions_2[merged_predictions_2['month_year']==month]
+        train = months_ahead_prediction_df[months_ahead_prediction_df['month_year']<(month-pd.offsets.MonthBegin(2))]
+        test = months_ahead_prediction_df[months_ahead_prediction_df['month_year']==month]
 
-        X_train, X_test = train[['predicted_evictions','predicted_by_zip_evictions',\
+        X_train, X_test = train[['predicted_evictions','predicted_evictions_by_zip',\
                                                 'predicted_evictions_random_forest']],\
-                                test[['predicted_evictions','predicted_by_zip_evictions',\
+                                test[['predicted_evictions','predicted_evictions_by_zip',\
                                                 'predicted_evictions_random_forest']]
         y_train,y_test = train['actual_evictions'], test['actual_evictions']
 
@@ -136,11 +136,7 @@ def linear_regression_combination(arimax_by_zip_df, top_down_arimax_df, random_f
     temp_df['month_year'] = pd.to_datetime(temp_df['month_year'])
 
     #merging predictions from linear regression with initial prediction datafame
-    merged_predictions_3 = pd.merge(merged_predictions_2,temp_df,how='left', left_index=True, right_index=True)
-
-    # for zip_code in merged_predictions_3.zip_code.unique():
-    #     zip_filtered_df = merged_predictions_3[merged_predictions_3.zip_code==zip_code]
-    #     rmse_dict[zip_code] = (mean_squared_error(zip_filtered_df['actual_evictions'],zip_filtered_df['linear_combination_predicted_evictions']))**0.5
+    merged_predictions_3 = pd.merge(months_ahead_prediction_df,temp_df,how='left', left_index=True, right_index=True)
 
     return merged_predictions_3
 

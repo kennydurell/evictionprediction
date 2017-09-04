@@ -132,12 +132,6 @@ def merged_data_datetime_shift(merged_df):
     merged_df['datetime_one_year_prior']=merged_df['Month_Year']-pd.offsets.MonthBegin(12)
     merged_df['datetime_two_years_prior']=merged_df['Month_Year']-pd.offsets.MonthBegin(24)
 
-
-    # merged_df = pd.merge(merged_df,merged_df[['Eviction_Notice','Month_Year','zip_code']],\
-    #                                             how='left', left_on=['one_month_prior','zip_code'],\
-    #                                             right_on= ['Month_Year','zip_code'], \
-    #                                             suffixes=('','_one_month_prior'))
-
     return merged_df
 
 def census_merge(merged_df, df_census):
@@ -177,7 +171,8 @@ def capital_improvement_cleaning(df_capital_improvements):
     capital_improvement_filtered = df_capital_improvements[['Petition Source Zipcode','Date Filed','Ground (landlord): Capital Improvement']]
     capital_improvement_filtered['Date Filed'] = pd.to_datetime(capital_improvement_filtered['Date Filed']) - pd.offsets.MonthBegin(1)
     capital_improvement_group_by = capital_improvement_filtered.groupby(['Date Filed','Petition Source Zipcode']).sum().reset_index()
-
+    capital_improvement_group_by = capital_improvement_group_by.rename(columns={'Ground (landlord): Capital Improvement':\
+                                            'capital_improvement_petition',})
     return capital_improvement_group_by
 
 def transform_merge_data(df_eviction,df_median_housing_price, df_census, df_unemployment):
