@@ -37,33 +37,29 @@ df_capital_improvements = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Cours
 
 
 def model_random_forest(df, num_estimators, m_features, std=3):
+    """Takes a dataframe of eviction data, runs it through a random forest model
+        and output predictions 1, 2 and 3 months into the future by zip.
+
+    Parameters:
+    df -- processed eviction dataframe with all features added
+    num_estimators - number of trees to use in the random forest model
+    m_features - randomly selected maximum number of features each brannch is permitted to choose from
+                    at each split
+    std - standard deviations above the mean. Used in determining which datapoints
+            in the training set are considered outliers.
+
+    Output:
+    predictions_df - predictions for evictions in each zip 1,2 and 3 months into the future
+    importance_dict - dictionary of feature importances from the final random forest fit.
+    """
+
     #initializing lists and regressor
     rfr = RandomForestRegressor(n_estimators = num_estimators, max_features=m_features )
     predictions_df= pd.DataFrame(np.random.randn(1, 5), columns=['month_year', 'zip_code','actual_evictions', 'predicted_evictions','months_ahead'])
     importance_dict={}
 
-    #additional data processing to ensure it is in ascending datetime order, with most recent date at bottom
-    merged_sorted = df[['Month', 'Year', 'Month_S','Year_S','Address_Zipcode', \
-                        'Month_Year','Eviction_Notice','CASANF0URN', \
-                        'CASANF0URN_unemployment_six_months_prior','capital_improvement_petition','capital_improvement_petition_six_months_prior','capital_improvement_petition_two_years_prior', 'Black_population_previous_year', 'median_sale_price_one_year_prior','median_sale_price_six_months_prior']].sort_values(['Month_Year'])
-    merged_sorted['Day_S'] = df['Month_Year'].dt.day
-    # merged_sorted = merged_sorted.dropna(subset=['CASANF0URN',\
-    #                     'CASANF0URN_unemployment_six_months_prior'])
-    merged_sorted['CASANF0URN'] = merged_sorted['CASANF0URN'].apply(lambda x:-1000 if pd.isnull(x) else x)
-    merged_sorted['CASANF0URN_unemployment_six_months_prior'] = merged_sorted['CASANF0URN_unemployment_six_months_prior'].apply(lambda x:-1000 if pd.isnull(x) else x)
-    merged_sorted['capital_improvement_petition_two_years_prior'] = merged_sorted['capital_improvement_petition_two_years_prior'].apply(lambda x:-1000 if pd.isnull(x) else x)
-    merged_sorted['capital_improvement_petition'] = merged_sorted['capital_improvement_petition'].apply(lambda x:-1000 if pd.isnull(x) else x)
-    merged_sorted['capital_improvement_petition_six_months_prior'] = merged_sorted['capital_improvement_petition_six_months_prior'].apply(lambda x:-1000 if pd.isnull(x) else x)
-    merged_sorted['capital_improvement_petition_two_years_prior'] = merged_sorted['capital_improvement_petition_two_years_prior'].apply(lambda x:-1000 if pd.isnull(x) else x)
-    merged_sorted['Black_population_previous_year'] = merged_sorted['Black_population_previous_year'].apply(lambda x:-1000 if pd.isnull(x) else x)
-    merged_sorted['median_sale_price_one_year_prior'] = merged_sorted['median_sale_price_one_year_prior'].apply(lambda x:-1000 if pd.isnull(x) else x)
-    merged_sorted['median_sale_price_six_months_prior'] = merged_sorted['median_sale_price_six_months_prior'].apply(lambda x:-1000 if pd.isnull(x) else x)
-
-
-    #creating dummies for zip_codes
-    zip_dummies = pd.get_dummies(merged_sorted['Address_Zipcode'])
-    merged_sorted = pd.concat([merged_sorted,zip_dummies],axis=1)
-    merged_sorted = merged_sorted.reset_index(drop=True)
+    #clean/sort data for model
+    merged_sorted = random_forest_model_data_cleaning(df)
 
     #creating X and y for regressor. Dropping unnecessary fields for splitting.
     y = merged_sorted.pop('Eviction_Notice')
@@ -80,25 +76,11 @@ def model_random_forest(df, num_estimators, m_features, std=3):
     i=0
     for months_ahead in months_ahead_list:
         for month in months_list:
-            train_indices = merged_sorted[merged_sorted['Month_Year']<(month-pd.offsets.MonthBegin(months_ahead-1))].index
-            test_indices = merged_sorted[merged_sorted['Month_Year']==month].index
-            X_train, X_test = X.iloc[train_indices], X.iloc[test_indices]
-            y_train, y_test = y.iloc[train_indices], y.iloc[test_indices].tolist()
-
-            for zip_code in X_train['Address_Zipcode'].unique():
-                indices_2 = X_train[X_train.Address_Zipcode==zip_code].index
-                for i,value in y_train.iloc[indices_2].iteritems():
-                    if value>(y_train.iloc[indices_2].mean()+ y_train.iloc[indices_2].std()*std):
-                        y_train.iloc[i]=y_train.iloc[indices_2].mean()
-
-            X_train = X_train.drop('Address_Zipcode',axis=1)
-            X_test = X_test.drop('Address_Zipcode',axis=1)
+            X_train, X_test, y_train, y_test,test_indices = \
+                    random_forest_train_test(merged_sorted,X,y,month,months_ahead,std)
 
             rfr.fit(X_train,y_train)
-
-
             y_hat = rfr.predict(X_test).tolist()
-
             zips = merged_sorted.iloc[test_indices]['Address_Zipcode']
             temp_df = pd.DataFrame(data={'predicted_evictions':y_hat,'actual_evictions':y_test,\
                                     'zip_code': zips})
@@ -113,7 +95,9 @@ def model_random_forest(df, num_estimators, m_features, std=3):
                 std_1 = np.std([tree.feature_importances_ for tree in rfr.estimators_],axis=0)
                 indices_import = np.argsort(importances)[::-1]
                 for f in range(X_train.shape[1]):
-                    importance_dict[f+1] = [X_train.columns.tolist()[indices_import[f]], importances[indices_import[f]],months_ahead]
+                    importance_dict[f+1] = \
+                                [X_train.columns.tolist()[indices_import[f]],\
+                                    importances[indices_import[f]],months_ahead]
             i+=1
             print i
 
@@ -123,6 +107,69 @@ def model_random_forest(df, num_estimators, m_features, std=3):
 
     return predictions_df, importance_dict
 
+
+def random_forest_model_data_cleaning(df):
+    """Munges, selects relevant features, dummifies and cleans the eviction dataset for use in the random forest model."""
+
+    #additional data processing to ensure it is in ascending datetime order, with most recent date at bottom
+    merged_sorted = df[['Month','Year', 'Month_S','Year_S','Address_Zipcode','Month_Year','Eviction_Notice','CASANF0URN', 'CASANF0URN_unemployment_six_months_prior','capital_improvement_petition','capital_improvement_petition_six_months_prior','capital_improvement_petition_two_years_prior', 'Black_population_previous_year', 'median_sale_price_one_year_prior','median_sale_price_six_months_prior']].sort_values('Month_Year')
+
+    merged_sorted['Day_S'] = df['Month_Year'].dt.day
+
+    merged_sorted['CASANF0URN'] = \
+                merged_sorted['CASANF0URN'].apply(lambda x:-1000 if pd.isnull(x) else x)
+    merged_sorted['CASANF0URN_unemployment_six_months_prior'] = \
+                merged_sorted['CASANF0URN_unemployment_six_months_prior'].apply\
+                                            (lambda x:-1000 if pd.isnull(x) else x)
+    merged_sorted['capital_improvement_petition_two_years_prior'] = \
+                merged_sorted['capital_improvement_petition_two_years_prior'].apply\
+                                            (lambda x:-1000 if pd.isnull(x) else x)
+    merged_sorted['capital_improvement_petition'] =\
+                merged_sorted['capital_improvement_petition'].apply\
+                                            (lambda x:-1000 if pd.isnull(x) else x)
+    merged_sorted['capital_improvement_petition_six_months_prior'] =\
+                merged_sorted['capital_improvement_petition_six_months_prior'].apply\
+                                            (lambda x:-1000 if pd.isnull(x) else x)
+    merged_sorted['capital_improvement_petition_two_years_prior'] =\
+                merged_sorted['capital_improvement_petition_two_years_prior'].apply\
+                                            (lambda x:-1000 if pd.isnull(x) else x)
+    merged_sorted['Black_population_previous_year'] =\
+                merged_sorted['Black_population_previous_year'].apply\
+                                            (lambda x:-1000 if pd.isnull(x) else x)
+    merged_sorted['median_sale_price_one_year_prior'] =\
+                merged_sorted['median_sale_price_one_year_prior'].apply\
+                                            (lambda x:-1000 if pd.isnull(x) else x)
+    merged_sorted['median_sale_price_six_months_prior'] =\
+                merged_sorted['median_sale_price_six_months_prior'].apply\
+                                            (lambda x:-1000 if pd.isnull(x) else x)
+
+    #creating dummies for zip_codes
+    zip_dummies = pd.get_dummies(merged_sorted['Address_Zipcode'])
+    merged_sorted = pd.concat([merged_sorted,zip_dummies],axis=1)
+    merged_sorted = merged_sorted.reset_index(drop=True)
+
+    return merged_sorted
+
+
+def random_forest_train_test(merged_sorted,X,y,month,months_ahead,std):
+    """Sets up appropriate train/test split for the time series data"""
+
+    train_indices = merged_sorted[merged_sorted['Month_Year']<\
+                                (month-pd.offsets.MonthBegin(months_ahead-1))].index
+    test_indices = merged_sorted[merged_sorted['Month_Year']==month].index
+    X_train, X_test = X.iloc[train_indices], X.iloc[test_indices]
+    y_train, y_test = y.iloc[train_indices], y.iloc[test_indices].tolist()
+
+    for zip_code in X_train['Address_Zipcode'].unique():
+        indices_2 = X_train[X_train.Address_Zipcode==zip_code].index
+        for i,value in y_train.iloc[indices_2].iteritems():
+            if value>(y_train.iloc[indices_2].mean()+ y_train.iloc[indices_2].std()*std):
+                y_train.iloc[i]=y_train.iloc[indices_2].mean()
+
+    X_train = X_train.drop('Address_Zipcode',axis=1)
+    X_test = X_test.drop('Address_Zipcode',axis=1)
+
+    return X_train, X_test, y_train, y_test, test_indices
 
 
 if __name__ == '__main__':

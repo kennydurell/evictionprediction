@@ -24,13 +24,6 @@ from statsmodels.tsa.arima_model import ARIMA
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 import matplotlib.pyplot as plt
 
-#For use on EC2 instances
-# df_eviction = pd.read_csv('/home/ubuntu/eviction_data/Eviction_Notices.csv')
-# df_median_housingprice_2 = pd.read_csv('/home/ubuntu/eviction_data/med_sp_zip_code_sf_ca (1).csv')
-# df_census = pd.read_csv('/home/ubuntu/eviction_data/ACS_data_total.csv')
-# df_unemployment = pd.read_csv('/home/ubuntu/eviction_data/Unemployment_Rate.csv')
-#
-
 #importing files
 df_eviction = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evictionprediction/Eviction_Data/Eviction_Notices.csv')
 df_median_housing_price = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evictionprediction/Eviction_Data/med_sp_zip_code_sf_ca (1).csv')
@@ -39,21 +32,9 @@ df_unemployment = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evicti
 df_capital_improvements = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evictionprediction/Eviction_Data/Petitions_to_the_Rent_Board.csv')
 
 
-
-
-
-# def zip_code_cv(df):
-#     zip_code_arima_best =defaultdict(list)
-#     i=0
-#     for zip_code in df['Address_Zipcode'].unique():
-#         results_list = arimax_by_zip_cv(df, zip_code)
-#         zip_code_arima_best[zip_code] = results_list
-#         i+=1
-#         print i
-#     return zip_code_arima_best
-
-
 def arimax_by_zip_cv (df):
+    """Cross validation for the ARIMAX model that fits by ZIP.
+        Returns optimal parameters for the model."""
 
     p = range(0,6)
     d= range(0,2)
@@ -113,6 +94,10 @@ def arimax_by_zip_cv (df):
 
 
 def arima_by_month_cv (df):
+
+    """Cross validation for the ARIMA model that fits by month. Returns optimal
+        parameters for the model. """
+
     p = range(0,8)
     d= range(0,3)
     q= range(1,3)
@@ -135,17 +120,25 @@ def arima_by_month_cv (df):
 
 
 def arima_by_zip_data_transform(df):
+    """Transforms eviction dataframe to ensure nulls and datetime are adjusted correctly"""
+    
     sorted_2 = df.sort_values(['Month_Year'])
     sorted_2['Eviction_Notice']= sorted_2['Eviction_Notice'].astype(float)
     sorted_2['Day_S'] = sorted_2['Month_Year'].dt.day
     sorted_2['CASANF0URN'] = sorted_2['CASANF0URN'].apply(lambda x:-1000 if pd.isnull(x) else x)
+
     sorted_2 =sorted_2.reset_index(drop=True,inplace=False)
     # sorted_2.pop('index')
 
     return sorted_2
 
 def arima_by_zip_months(transformed_df):
-    months = transformed_df[transformed_df['Month_Year']>(min(transformed_df['Month_Year'])+pd.offsets.MonthBegin(6))][['Year_S','Month_S','Day_S']]
+    """Creates a list of unique months from the dataframe greater than a certain minimum month.
+        The minimum ensures that the first few months are used just for training and the model
+        doesn't include them in the test set"""
+
+    months = transformed_df[transformed_df['Month_Year']>(min(transformed_df['Month_Year'])\
+                                +pd.offsets.MonthBegin(24))][['Year_S','Month_S','Day_S']]
     months.drop_duplicates(inplace=True)
     months_list = [datetime.datetime(*x) for x in months.values]
 
@@ -175,7 +168,8 @@ def sarimax_cv (df):
     for param in pdq:
         for param_seasonal in seasonal_pdq:
             try:
-                mod = SARIMAX(y,order=param, seasonal_order=param_seasonal,enforce_stationarity=False, enforce_invertibility=False)
+                mod = SARIMAX(y,order=param, seasonal_order=param_seasonal,\
+                                enforce_stationarity=False, enforce_invertibility=False)
 
                 results = mod.fit()
 
@@ -226,7 +220,10 @@ def sarimax_by_zip_cv (df, zip_code):
 
 
 def rf_cv(df):
-    predictions_df, rmse_final_dict = model_random_forest(df, num_estimators=10, m_features='auto',std=3)
+    """Random Forest model cross validation. Returns optimal parameters for the model"""
+
+    predictions_df, rmse_final_dict = model_random_forest(df, num_estimators=10,\
+                                                            m_features='auto',std=3)
     y_true, y_predict, baseline = baseline_model(df)
     comparison = rmse_final_dict
     second_dict ={}
@@ -238,7 +235,9 @@ def rf_cv(df):
     for estimator in n_estimators:
         for feature in max_features:
             for std in std_list:
-                predictions_df, rmse_final_dict_cv = model_random_forest(df, num_estimators=estimator, m_features = feature, std=std)
+                predictions_df, rmse_final_dict_cv = \
+                        model_random_forest(df, num_estimators=estimator, \
+                                                m_features = feature, std=std)
                 for zip_code in rmse_final_dict_cv.keys():
                     if rmse_final_dict_cv[zip_code] - comparison[zip_code] < 0:
                         baseline_diff = rmse_final_dict_cv[zip_code] - baseline[zip_code]

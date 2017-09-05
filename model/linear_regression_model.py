@@ -1,18 +1,3 @@
-# Linear Regression
-#
-# Input
-#
-# RandomForestRegressor
-# predicted value for zip/month
-#
-#
-# ARIMAX by zip
-# predicted value for zip/month
-#
-# Top down
-# predicted value for zip/month
-
-
 import warnings
 import itertools
 import pandas as pd
@@ -27,13 +12,10 @@ from pandas.tools.plotting import autocorrelation_plot
 from collections import defaultdict
 #from arima_models import arimax_by_zip
 
-
 #importing other models built in this repo
 from baseline_model import baseline_model
 from arima_models import arimax_by_zip, top_down_estimation_by_zip, arimax_by_month
 from random_forest_model import model_random_forest
-
-
 
 # Modeling Algorithms
 from sklearn.ensemble import RandomForestClassifier , GradientBoostingClassifier
@@ -91,22 +73,34 @@ def run_all_models(df_eviction,df_median_housing_price,df_census,df_unemployment
     return merged_predictions
 
 
-def linear_regression_combination(arimax_by_zip_df, top_down_arimax_df, random_forest_df):
-
+def merge_all_models(arimax_by_zip_df, top_down_arimax_df, random_forest_df):
     merged_predictions_1 = pd.merge(arimax_by_zip_df,top_down_arimax_df[['predicted_evictions_by_zip','Month_Year','Address_Zipcode','months_ahead']],\
                             how='inner',left_on=['zip_code','month_year','months_ahead'],right_on= ['Address_Zipcode','Month_Year','months_ahead'],suffixes=('','_top_down_arimax'))
     merged_predictions_2 = pd.merge(merged_predictions_1,random_forest_df,how='inner',\
                                     on= ['zip_code','month_year','months_ahead'], suffixes= ('','_random_forest'))
     months_ahead_prediction_df = merged_predictions_2[merged_predictions_2.months_ahead==3]
+
+    return months_ahead_prediction_df
+
+
+def build_months_list(months_ahead_prediction_df):
     months = months_ahead_prediction_df[months_ahead_prediction_df>(min(months_ahead_prediction_df['month_year'])+pd.offsets.MonthBegin(3))]['month_year']
     months.dropna(inplace=True)
     months_list = months.drop_duplicates(inplace=False)
 
+    return months_list, months
+
+
+def linear_regression_combination(arimax_by_zip_df, top_down_arimax_df, random_forest_df):
+
+    months_ahead_prediction_df = merge_all_models(arimax_by_zip_df, top_down_arimax_df,\
+                                                                        random_forest_df)
+
+    months_list, months = build_months_list(months_ahead_prediction_df)
+
     linear_predictions = []
     index_list = []
     rmse_dict={}
-
-
 
     i=0
     for month in months_list:
@@ -138,7 +132,7 @@ def linear_regression_combination(arimax_by_zip_df, top_down_arimax_df, random_f
     #merging predictions from linear regression with initial prediction datafame
     merged_predictions_3 = pd.merge(months_ahead_prediction_df,temp_df,how='left', left_index=True, right_index=True)
 
-    return merged_predictions_3
+    return merged_predictions_3, 
 
 
 

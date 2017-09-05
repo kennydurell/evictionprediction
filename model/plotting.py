@@ -51,13 +51,13 @@ def plot_unprocessed_data (df,type_1):
             plot_time_series(df,zip_code)
 
 
-def plot_processed_data (df,zip_code=False):
+def plot_by_zip (df, prediction_df, zip_code=False):
 
     if zip_code:
         for zip_code_1 in df.zip_code.unique():
             zip_level_plot(df,zip_code=zip_code_1)
-    else:
-        entire_city_plot(df)
+    # else:
+    #     entire_city_plot(df)
 
 def plot_time_series(df,zip_code):
     fig,ax = plt.subplots()
@@ -70,7 +70,7 @@ def plot_acf_2(df,zip_code):
     plot_acf(plotting_df, title=zip_code)
 
 
-def zip_level_plot(predictions_df,zip_code,columns_to_plot=['Month_Year','actual_evictions',\
+def zip_level_plot(original_df, predictions_df,zip_code,columns_to_plot=['Month_Year','actual_evictions',\
                                         'linear_combination_predicted_evictions','zip_code']):
 
     zip_filtered_df = predictions_df[predictions_df[columns_to_plot[3]]==zip_code]
