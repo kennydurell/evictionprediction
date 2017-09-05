@@ -38,63 +38,36 @@ df_unemployment = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evicti
 df_capital_improvements = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evictionprediction/Eviction_Data/Petitions_to_the_Rent_Board.csv')
 
 
-
-def plot_unprocessed_data (df,type_1):
-    zip_list = df.Address_Zipcode.unique()
-
-    if type_1 == 'plot_acf':
-        for zip_code in zip_list:
-            plot_acf_2(df,zip_code)
-
-    else:
-        for zip_code in zip_list:
-            plot_time_series(df,zip_code)
-
-
-def plot_by_zip (df, prediction_df, zip_code=False):
+def plot_by_zip (df, predictions_df, zip_code=False):
+    '''If zip_code is true, plots eviction notices per each unique zip in the dataframe
+    on a separate plot '''
 
     if zip_code:
         for zip_code_1 in df.zip_code.unique():
-            zip_level_plot(df,zip_code=zip_code_1)
-    # else:
-    #     entire_city_plot(df)
-
-def plot_time_series(df,zip_code):
-    fig,ax = plt.subplots()
-    plotting_df = df[df['Address_Zipcode']==zip_code][['Month_Year','Eviction_Notice']].set_index('Month_Year',inplace=False)
-    ax.plot(plotting_df,label=zip_code)
-    ax.legend()
-
-def plot_acf_2(df,zip_code):
-    plotting_df = df[df['Address_Zipcode']==zip_code][['Month_Year','Eviction_Notice']].set_index('Month_Year',inplace=False)
-    plot_acf(plotting_df, title=zip_code)
+            zip_level_plot(df,predictions_df,zip_code=zip_code_1)
 
 
-def zip_level_plot(original_df, predictions_df,zip_code,columns_to_plot=['Month_Year','actual_evictions',\
-                                        'linear_combination_predicted_evictions','zip_code']):
+def zip_level_plot(original_df, predictions_df,zip_code):
+    '''Transforming and merging the past data with the prediction data to make a single dataframe
+    suitable for plotting. Use plt.show() to see all generated plots.'''
 
-    zip_filtered_df = predictions_df[predictions_df[columns_to_plot[3]]==zip_code]
+    predictions_filtered_df = predictions_df[predictions_df['zip_code']==zip_code]
+    original_filtered_df = original_df[original_df['zip_code']==zip_code]
+    predictions_filtered_df = predictions_filtered_df[['month_year','linear_predicted_evictions']]
+    original_filtered_df = original_filtered_df[['Month_Year','Eviction_Notice','predicted_evictions_by_zip']]
+    original_filtered_df = original_filtered_df.rename(columns={'Month_Year':'month_year','predicted_evictions_by_zip':'linear_predicted_evictions'})
+
+    merged_df  = original_filtered_df.append(predictions_filtered_df)
 
     fig,ax = plt.subplots()
-    ax.plot(zip_filtered_df[columns_to_plot[0]],zip_filtered_df[columns_to_plot[1]],label='Actual Eviction Notices')
-    ax.plot(zip_filtered_df[columns_to_plot[0]],zip_filtered_df[columns_to_plot[2]],label='Predicted Eviction Notices')
+    ax.plot(merged_df['month_year'],merged_df['Eviction_Notice'],label='Actual Eviction Notices')
+    ax.plot(merged_df['month_year'],merged_df['linear_predicted_evictions'],label='Predicted Eviction Notices')
 
-    ax.set(title='Actual and Predicted Eviction Notices in SF ZIP code '+ str(zip_code) + ' (ARIMAX)',\
+    ax.set(title='Actual and Predicted Eviction Notices in SF ZIP code '+str(zip_code),\
             ylabel = 'Evictions', xlabel='Month of Eviction Notice')
+
     ax.legend()
 
-
-def entire_city_plot(predictions_df,columns_to_plot=['month_year','actual_evictions',\
-                                        'predicted_evictions','zip_code']):
-    fig,ax = plt.subplots()
-    ax.plot(predictions_df[columns_to_plot[0]],predictions_df[columns_to_plot[1]],\
-                                                    label='Actual Eviction Notices')
-    ax.plot(predictions_df[columns_to_plot[0]],predictions_df[columns_to_plot[2]],\
-                                                    label='Predicted Eviction Notices')
-
-    ax.set(title='Actual and Predicted Eviction Notices in San Francisco (ARIMAX)',\
-                            ylabel = 'Evictions', xlabel='Month of Eviction Notice')
-    ax.legend()
 
 
 if __name__=='__main__':

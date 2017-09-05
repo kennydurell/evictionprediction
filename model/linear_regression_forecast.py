@@ -60,7 +60,7 @@ def predict_evictions(df_eviction,df_median_housing_price,df_census,df_unemploym
 
     final_df = linear_regression_combination(merged_predictions, merged_training_data)
 
-    plot_by_zip(eviction_median_housing, final_df, zip_code=plot_by_zip)
+    plot_by_zip(merged_training_data, final_df, zip_code=plot_by_zip)
 
     return final_df
 
@@ -116,7 +116,7 @@ def linear_regression_combination(merged_predictions, merged_training_data):
 
     #building dataframe to store the prediction data from the linear regression above
     predictions_df = pd.DataFrame(data={'month_year':months,\
-                'predicted_evictions':linear_predictions,'zip_code':zips})
+                'linear_predicted_evictions':linear_predictions,'zip_code':zips})
 
     predictions_df['month_year'] = pd.to_datetime(predictions_df['month_year'])
 

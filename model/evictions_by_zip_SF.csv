@@ -1,4 +1,4 @@
-,linear_combination_predicted_evictions,month_year,zip_code
+,linear_predicted_evictions,month_year,zip_code
 0,7.60908601237,2017-10-01,94102
 1,8.53286143869,2017-10-01,94103
 2,3.83304176751,2017-10-01,94104
