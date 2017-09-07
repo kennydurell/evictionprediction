@@ -2,7 +2,7 @@ import warnings
 import itertools
 import pandas as pd
 import numpy as np
-import statsmodels.api as sm
+
 
 import datetime
 
@@ -132,7 +132,7 @@ def linear_regression_combination(arimax_by_zip_df, top_down_arimax_df, random_f
     #merging predictions from linear regression with initial prediction datafame
     merged_predictions_3 = pd.merge(months_ahead_prediction_df,temp_df,how='left', left_index=True, right_index=True)
 
-    return merged_predictions_3, 
+    return merged_predictions_3
 
 
 

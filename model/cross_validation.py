@@ -121,7 +121,7 @@ def arima_by_month_cv (df):
 
 def arima_by_zip_data_transform(df):
     """Transforms eviction dataframe to ensure nulls and datetime are adjusted correctly"""
-    
+
     sorted_2 = df.sort_values(['Month_Year'])
     sorted_2['Eviction_Notice']= sorted_2['Eviction_Notice'].astype(float)
     sorted_2['Day_S'] = sorted_2['Month_Year'].dt.day

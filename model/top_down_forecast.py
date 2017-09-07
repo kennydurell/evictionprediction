@@ -37,13 +37,13 @@ df_capital_improvements = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Cours
 df_future_data = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evictionprediction/Eviction_Data/test_data.csv')
 
 
-def run_top_down_forecast(df_eviction,df_median_housing_price, df_census, df_unemployment,df_future_data):
+def run_top_down_forecast(df_eviction,df_median_housing_price, df_census, df_unemployment,df_future_data, months_ahead=3):
     '''run each step of the forecasting model in order. Parameters are all unprocessed dataframes.'''
 
     eviction_median_housing = transform_merge_data(df_eviction,df_median_housing_price, df_census, df_unemployment)
     future_df = future_data_processing(df_future_data)
-    predictions_by_month,y_hat = arimax_by_month_forecast(eviction_median_housing,3,future_df)
-    top_down_prediction_df = top_down_forecast(eviction_median_housing,predictions_by_month,3)
+    predictions_by_month,y_hat = arimax_by_month_forecast(eviction_median_housing,months_ahead,future_df)
+    top_down_prediction_df = top_down_forecast(eviction_median_housing,predictions_by_month,months_ahead)
     return top_down_prediction_df
 
 

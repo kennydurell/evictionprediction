@@ -38,7 +38,7 @@ df_unemployment = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evicti
 df_capital_improvements = pd.read_csv('/Users/mightyhive/Desktop/Galvanize_Course/evictionprediction/Eviction_Data/Petitions_to_the_Rent_Board.csv')
 
 
-def plot_by_zip (df, predictions_df, zip_code=False):
+def plot_by_zips(df, predictions_df, zip_code=False):
     '''If zip_code is true, plots eviction notices per each unique zip in the dataframe
     on a separate plot '''
 

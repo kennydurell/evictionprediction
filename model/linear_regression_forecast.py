@@ -2,7 +2,7 @@ import warnings
 import itertools
 import pandas as pd
 import numpy as np
-import statsmodels.api as sm
+
 
 import datetime
 
@@ -18,7 +18,7 @@ from arima_models import arimax_by_zip, top_down_estimation_by_zip, arimax_by_mo
 from random_forest_model import model_random_forest
 from top_down_forecast import run_top_down_forecast
 from random_forest_forecast import run_random_forest_forecast
-from plotting import plot_by_zip
+from plotting import plot_by_zips
 
 # Modeling Algorithms
 from sklearn.ensemble import RandomForestClassifier , GradientBoostingClassifier
@@ -45,8 +45,8 @@ def predict_evictions(df_eviction,df_median_housing_price,df_census,df_unemploym
 
     #models
 
-    top_down_forecast_df = run_top_down_forecast(df_eviction,df_median_housing_price, df_census, df_unemployment,df_future_data)
-    random_forest_forecast_df = run_random_forest_forecast(df_eviction,df_median_housing_price, df_census, df_unemployment,df_future_data,months_ahead=3)
+    top_down_forecast_df = run_top_down_forecast(df_eviction,df_median_housing_price, df_census, df_unemployment,df_future_data,months_ahead)
+    random_forest_forecast_df = run_random_forest_forecast(df_eviction,df_median_housing_price, df_census, df_unemployment,df_future_data,months_ahead)
 
     #run training models. needs to be pickled.
     eviction_median_housing = transform_merge_data(df_eviction,df_median_housing_price, df_census, df_unemployment)
@@ -60,7 +60,8 @@ def predict_evictions(df_eviction,df_median_housing_price,df_census,df_unemploym
 
     final_df = linear_regression_combination(merged_predictions, merged_training_data)
 
-    plot_by_zip(merged_training_data, final_df, zip_code=plot_by_zip)
+    if plot_by_zip:
+        plot_by_zips(merged_training_data, final_df,zip_code=True)
 
     return final_df
 
@@ -121,11 +122,12 @@ def linear_regression_combination(merged_predictions, merged_training_data):
     predictions_df['month_year'] = pd.to_datetime(predictions_df['month_year'])
 
     #exporting to csv for ease of use
-    predictions_df.to_csv('evictions_by_zip_SF.csv')
+    merged_training_data.to_csv('past_evictions_by_zip_SF.csv')
+    predictions_df.to_csv('future_evictions_by_zip_SF.csv')
 
     return predictions_df
 
 
 
 if __name__ == '__main__':
-    predicted_evictions  = predict_evictions(df_eviction,df_median_housing_price,df_census,df_unemployment, df_future_data, months_ahead=3)
+    predicted_evictions  = predict_evictions(df_eviction,df_median_housing_price,df_census,df_unemployment, df_future_data, months_ahead=3, plot_by_zip=True)

@@ -74,6 +74,7 @@ def model_random_forest(df, num_estimators, m_features, std=3):
     #summary values in the present) aren't used to predict/validate. result is an rmse for evictions by month
     #for all zips
     i=0
+    print 'running random_forest_regressor...'
     for months_ahead in months_ahead_list:
         for month in months_list:
             X_train, X_test, y_train, y_test,test_indices = \
@@ -99,7 +100,7 @@ def model_random_forest(df, num_estimators, m_features, std=3):
                                 [X_train.columns.tolist()[indices_import[f]],\
                                     importances[indices_import[f]],months_ahead]
             i+=1
-            print i
+            print 'cycle: ' + str(i)
 
     predictions_df=predictions_df[1:]
     predictions_df.month_year = pd.to_datetime(predictions_df.month_year)

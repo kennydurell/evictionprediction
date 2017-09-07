@@ -72,12 +72,12 @@ def arimax_by_zip (df,zip_param_dictionary):
                     if row>(y_train.Eviction_Notice.mean()+ y_train.Eviction_Notice.std()*value[2]):
                         y_train.Eviction_Notice.iloc[i]=(y_train.Eviction_Notice.mean())
 
-
+                y_train.drop(['index','CASANF0URN'],axis=1,inplace=True)
                 y_train = y_train.set_index(['Month_Year'], inplace=False)
                 y_test = y_test.set_index(['Month_Year'], inplace=False)
 
                 try:
-                    predicted, actual = arimax_by_zip_fit_predict(y_train,y_test,value[0])
+                    predicted, actual = sarimax_by_zip_fit_predict(y_train,y_test,value[0],value[1])
                     temp_df = pd.DataFrame(data={'predicted_evictions':predicted,'actual_evictions':actual,\
                                             'zip_code': zip_code,'months_ahead':[1,2,3]})
                     temp_df['month_year']=pd.Series([month,month+pd.offsets.MonthBegin(1),month+pd.offsets.MonthBegin(2)]).values
@@ -105,6 +105,19 @@ def rmse_calculation(predictions_df):
         zip_filtered_df = predictions_df[predictions_df.zip_code==zip_code]
         rmse_dict[zip_code] = (mean_squared_error(zip_filtered_df['actual_evictions'],zip_filtered_df['predicted_evictions']))**0.5
     return rmse_dict
+
+def sarimax_by_zip_fit_predict(y_train,y_test,param, seasonal):
+    """Fits and predicts 1,2 and 3 months into the future for the given eviction dataset.
+     Exogenous variable is used to perform a linear regression underlying the ARIMA fit. """
+
+    model = SARIMAX(y_train,order=param,seasonal_order=seasonal)
+    fitted = model.fit()
+    y_hat = fitted.forecast(steps=3).values
+    predicted = y_hat.tolist()
+    print predicted
+    actual = y_test.Eviction_Notice.values.tolist()
+
+    return predicted, actual
 
 
 def arimax_by_zip_fit_predict(y_train,y_test,param):
@@ -143,7 +156,8 @@ def top_down_estimation_by_zip(original_df):
 
     zip_perc_df= pd.DataFrame(np.random.randn(1, 4), columns=['month_for_zips','Address_Zipcode','perc_of_month','months_ahead_2'])
     months_ahead_list = [1,2,3]
-
+    print 'running top_down_arimax_decomposition...'
+    i=0
     for months_ahead in months_ahead_list:
         percentage_of_month_df = pd.merge(original_df[['Month_Year','Address_Zipcode',\
         'Eviction_Notice']],predictions_by_month_df[predictions_by_month_df['months_ahead']==months_ahead],\
@@ -153,7 +167,7 @@ def top_down_estimation_by_zip(original_df):
         months_list = pd.to_datetime(percentage_of_month_df[percentage_of_month_df.Month_Year>\
             (min(percentage_of_month_df.Month_Year)+pd.offsets.MonthBegin(3))]['month_year'].unique())
 
-        i=0
+
 
         for month in months_list:
             indices = pd.notnull(percentage_of_month_df[percentage_of_month_df.Month_Year<(month-pd.offsets.MonthBegin(months_ahead-1))]['perc_of_month'])
@@ -164,10 +178,9 @@ def top_down_estimation_by_zip(original_df):
             group_by_zip_df['months_ahead_2'] = months_ahead
 
             zip_perc_df = zip_perc_df.append(group_by_zip_df, ignore_index=True)
+        i+=1
+        print 'cycle: '+ str(i)
 
-
-            i+=1
-            print i
 
     zip_perc_df = zip_perc_df[1:]
 
@@ -274,6 +287,7 @@ def arimax_by_month (df,param,std):
     transformed_df=transformed_df.groupby('Month_Year').sum().reset_index()
 
     i=0
+    print 'running arimax_by_month calculation...'
     for month in months_list:
         y_train, y_test = arimax_by_month_train_test(transformed_df,month,std)
 
@@ -286,6 +300,7 @@ def arimax_by_month (df,param,std):
 
         except Exception as e:
             logging.error(e, exc_info=True)
+        print '...'
 
     predictions_df = predictions_df[1:]
     predictions_df['month_year']=pd.to_datetime(predictions_df['month_year'])
@@ -301,7 +316,7 @@ def arimax_by_month (df,param,std):
 
 if __name__ == '__main__':
     eviction_median_housing = transform_merge_data(df_eviction,df_median_housing_price, df_census, df_unemployment)
-    top_down_by_zip_df = top_down_estimation_by_zip(eviction_median_housing)
+    # top_down_by_zip_df = top_down_estimation_by_zip(eviction_median_housing)
     zip_dict = {'94102': [(2, 1, 0),(1,0,0,6),4],
                 '94103': [(0, 1, 1),(1,0,0,6),3],
                  '94105': [(0, 0, 0),(0,0,0,0),4],
@@ -327,3 +342,4 @@ if __name__ == '__main__':
                  '94134': [(3, 1, 1),(2,0,0,6),4],
                  '94158': [(0, 1, 0),(1,0,0,6),4],
                  'Unknown_ZIP': [(4, 1, 1),(0,0,0,0),4]}
+    zip_predictions_df, rmse= arimax_by_zip (eviction_median_housing,zip_dict)
