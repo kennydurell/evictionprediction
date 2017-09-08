@@ -16,6 +16,8 @@ I combined a top-down hierarchical ARIMAX model with a random forest regressor t
 
 The final result of this project is code in the forecasting folder, which allows you to input the number of months into the future you'd like to see and return predicted eviction totals, by ZIP, for those months.
 
+[Watch me present them here!](https://youtu.be/MZoeI4p_Hq8?t=4977)
+
 ## My Process
 I started with a baseline of predicting a rolling mean for all evictions in SF. This did surprisingly well, save for a few major outliers, so I began to look at potential ways to harness the power of this macro success to predict well on a ZIP by ZIP basis, where totals by month are small and erratic.
 
@@ -24,9 +26,11 @@ I started with a baseline of predicting a rolling mean for all evictions in SF. 
 The data used in this model comes from a variety of sources. All are open source and publicly available. Links are provided below.
 
 Data sources used:
-- Evictions - OpenDataSF [link]
-- Capital Improvements Petitions- OpenDataSF
-- American Community Survey
+
+From OpenData SF
+- [Eviction Notices in SF](https://data.sfgov.org/Housing-and-Buildings/Eviction-Notices/5cei-gny5/data)
+- [Petitions to the Rent Board](https://data.sfgov.org/Housing-and-Buildings/Petitions-to-the-Rent-Board/6swy-cmkq) (specifically the Capital Improvement Request petitions)
+- [American Community Survey](https://factfinder.census.gov/faces/nav/jsf/pages/community_facts.xhtml?src=bkmk)
 - Unemployment by Month - San Francisco
 
 Most of the data munging/processing is done with the code in the data_processing folder. If there is additional pre-processing needed, I've listed this in the doc string.
