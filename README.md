@@ -27,11 +27,10 @@ The data used in this model comes from a variety of sources. All are open source
 
 Data sources used:
 
-From OpenData SF
 - [Eviction Notices in SF](https://data.sfgov.org/Housing-and-Buildings/Eviction-Notices/5cei-gny5/data)
 - [Petitions to the Rent Board](https://data.sfgov.org/Housing-and-Buildings/Petitions-to-the-Rent-Board/6swy-cmkq) (specifically the Capital Improvement Request petitions)
 - [American Community Survey](https://factfinder.census.gov/faces/nav/jsf/pages/community_facts.xhtml?src=bkmk)
-- Unemployment by Month - San Francisco
+- [Unemployment by Month - San Francisco](https://fred.stlouisfed.org/series/CASANF0URN)
 
 Most of the data munging/processing is done with the code in the data_processing folder. If there is additional pre-processing needed, I've listed this in the doc string.
 
@@ -40,13 +39,19 @@ Most of the data munging/processing is done with the code in the data_processing
 # Using the Model
 Here are the steps to run the model:
 
-1. Follow these links to download the appropriate datasets:
+1. Follow the links in Data Collection and Storage (above) to download the appropriate datasets.
 
-- Eviction Notice OpenDataSF -
-- Unemployment_Rate - https://fred.stlouisfed.org/series/CASANF0URN
-- Capital Improvement -
+Eviction Notices in SF = df_eviction
 
-Note : The open data version of the eviction notices
+Petitions to the Rent Board = df_capital_improvements
+
+American Community Survey = df_census
+
+Unemployment by Month - San Francisco = df_unemployment
+
+
+
+Note : The open data version of the eviction notices includes the address 
 
 2. Import predict_evictions from linear_regression_forecast.py. Pass as parameters the datasets above as well as the months ahead you want to look and whether you want a set of plots returned by ZIP. It may take 10-15 minutes to run, as it has not yet been pickled (next on my to-do list).
 
