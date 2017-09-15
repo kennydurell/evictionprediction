@@ -51,7 +51,7 @@ Unemployment by Month - San Francisco = df_unemployment
 
 
 
-Note : The open data version of the eviction notices includes the address 
+Note : The open data version of the eviction notices includes the address
 
 2. Import predict_evictions from linear_regression_forecast.py. Pass as parameters the datasets above as well as the months ahead you want to look and whether you want a set of plots returned by ZIP. It may take 10-15 minutes to run, as it has not yet been pickled (next on my to-do list).
 
@@ -62,17 +62,3 @@ Note : The open data version of the eviction notices includes the address
 Currently, the model only works with whatever data you've provided; the next step is to pull regularly from the OpenDataSF and the Department of Labor APIs to update the model with new data and improve its ability to forecast.
 
 I also have a few unexplored hypotheses. One is that a ZIP's proximity to ZIPs that had a large number of evictions in previous months may be an indicator of an increase in evictions in coming months in that ZIP. This, along with feature engineering around changes in rental price over time as well as digging deeper into the City of San Francisco's large building permit dataset will be my next steps.
-
-
-
-An overview of your project.
-What is the goal of your project?
-How did you accomplish this goal? (Include an explanation that's not too technical)
-What are your results?
-How can I see what you did? (Link to your live app!)
-An in-depth explanation of your process
-What algorithms and techniques did you use?
-How did you validate your results?
-What interesting insights did you gain?
-How to run on my own
-Give instructions for how to run your code on their computer (e.g. Run python scraper.py to collect the data, then run...)
