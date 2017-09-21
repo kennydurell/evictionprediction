@@ -39,21 +39,24 @@ Most of the data munging/processing is done with the code in the data_processing
 # Using the Model
 Here are the steps to run the model:
 
-1. Follow the links in Data Collection and Storage (above) to download the appropriate datasets.
+1. Follow the links below to download the appropriate datasets. The name of the datasets, their parameter names, and what they contain, are listed.
 
-Eviction Notices in SF = df_eviction
+- [Eviction Notices in SF](https://data.sfgov.org/Housing-and-Buildings/Eviction-Notices/5cei-gny5/data) = df_eviction
+- Note: I was given access to eviction notices by individual building addresses (as compared to the block-level addresses provided in the publicly available dataset) and used these addresses in my dataset, filling in any blank ZIPs via the Streety Smarts ZIP API. The columns I added are named 'Specific_Address' and 'Address_Zipcode'. The landlord ZIP matches up with the tenant ZIP about 90% of the time so if you're looking for a quick overview/forecast, using these ZIPs as 'Address_Zipcode' is probably the best option.
 
-Petitions to the Rent Board = df_capital_improvements
+Otherwise, the 'Location' column lists the lat-lon for the block level for each eviction notice and, with the help of [Geocoder](https://chrisalbon.com/python/geocoding_and_reverse_geocoding.html)this data can be used to back out the eviction notice ZIP for each entry.
 
-American Community Survey = df_census
+- [Petitions to the Rent Board](https://data.sfgov.org/Housing-and-Buildings/Petitions-to-the-Rent-Board/6swy-cmkq) = df_capital_improvements
 
-Unemployment by Month - San Francisco = df_unemployment
+- [American Community Survey](https://factfinder.census.gov/faces/nav/jsf/pages/community_facts.xhtml?src=bkmk) = df_census
+
+- [Unemployment by Month - San Francisco](https://fred.stlouisfed.org/series/CASANF0URN) = df_unemployment
 
 
-
-Note : The open data version of the eviction notices includes the address
 
 2. Import predict_evictions from linear_regression_forecast.py. Pass as parameters the datasets above as well as the months ahead you want to look and whether you want a set of plots returned by ZIP. It may take 10-15 minutes to run, as it has not yet been pickled (next on my to-do list).
+
+3. The past evictions (predicted and actual) as well as the forecasted future evictions will be saved on your computer as 'past_evictions_by_zip_SF.csv' and 'future_evictions_by_zip_SF.csv'
 
 
 
