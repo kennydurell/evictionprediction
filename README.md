@@ -42,9 +42,9 @@ Here are the steps to run the model:
 1. Follow the links below to download the appropriate datasets. The name of the datasets, their parameter names, and what they contain, are listed.
 
 - [Eviction Notices in SF](https://data.sfgov.org/Housing-and-Buildings/Eviction-Notices/5cei-gny5/data) = df_eviction
-- Note: I was given access to eviction notices by individual building addresses (as compared to the block-level addresses provided in the publicly available dataset) and used these addresses in my dataset, filling in any blank ZIPs via the Streety Smarts ZIP API. The columns I added are named 'Specific_Address' and 'Address_Zipcode'. The landlord ZIP matches up with the tenant ZIP about 90% of the time so if you're looking for a quick overview/forecast, using these ZIPs as 'Address_Zipcode' is probably the best option.
+   Note: I was given access to eviction notices by individual building addresses (as compared to the block-level addresses provided in the publicly available dataset) and used these addresses in my dataset, filling in any blank ZIPs via the Streety Smarts ZIP API. The columns I added are named 'Specific_Address' and 'Address_Zipcode'. The landlord ZIP matches up with the tenant ZIP about 90% of the time so if you're looking for a quick overview/forecast, using these ZIPs as 'Address_Zipcode' is probably the best option.
 
-Otherwise, the 'Location' column lists the lat-lon for the block level for each eviction notice and, with the help of [Geocoder](https://chrisalbon.com/python/geocoding_and_reverse_geocoding.html)this data can be used to back out the eviction notice ZIP for each entry.
+   Otherwise, the 'Location' column lists the lat-lon for the block level for each eviction notice and, with the help of [Geocoder](https://chrisalbon.com/python/geocoding_and_reverse_geocoding.html), this data can be used to back out the eviction notice ZIP for each entry.
 
 - [Petitions to the Rent Board](https://data.sfgov.org/Housing-and-Buildings/Petitions-to-the-Rent-Board/6swy-cmkq) = df_capital_improvements
 
