@@ -20,14 +20,14 @@ The features in each model that ultimately produced the lowest RMSE for the cros
     Unemployment Rate - year prior (along with AR of 2, I of 1 and MA of 2)
 
 **Random Forest Regressor Features**  
-    Month,Year, Zipcode, Unemployment Rate - year prior, Unemployment Rate - six months prior, Capital Improvement Petitions - year prior, Capital Improvement Petitions - six months prior, Capital Improvement Petitions - two years prior, Black population - year prior , Median Home Sale Price - year prior, Median Home Sale Price - six months prior
+    Month,Year, Zipcode, Unemployment Rate - year_prior, Unemployment Rate - six_months_prior, Capital Improvement Petitions - year_prior, Capital Improvement Petitions - six_months_prior, Capital Improvement Petitions - two_years_prior, Black population - year_prior , Median Home Sale Price - year_prior, Median Home Sale Price - six_months_prior
 
 **Feature Importance for Random Forest Regressor**
-- ZIP 94110
-- Unemployment Rate - year prior
-- Month
-- Unemployment Rate - six months prior
-- Capital Improvement Petitions - two years prior
+1. ZIP 94110
+2. Unemployment Rate - year_prior
+3. Month
+4. Unemployment Rate - six_months_prior
+5. Capital Improvement Petitions - two_years_prior
 
 
 The final result of this project is code in the forecasting folder, which allows you to input the number of months into the future you'd like to see and return predicted eviction totals, by ZIP, for those months.
