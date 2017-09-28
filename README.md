@@ -12,11 +12,26 @@ Ideally, this will be a resource for tenant rights' groups and city officials in
 
 
 # Results
-I combined a top-down hierarchical ARIMAX model with a random forest regressor to achieve the lowest root mean squared error on unseen eviction data. Predicting outliers/spikes is extremely difficult, but I was able to improve upon the baseline in that regard and minimize their latent impact on future predictions in the process.
+I combined a top-down hierarchical ARIMAX model with a random forest regressor to achieve the lowest root mean squared error on unseen eviction data by ZIP. Predicting outliers/spikes is extremely difficult, but I was able to improve upon the baseline in that regard and minimize their latent impact on future predictions in the process.
+
+The features in each model that ultimately produced the lowest RMSE for the cross validated time series data were:
+
+ARIMAX: Unemployment Rate - year prior (along with AR of 2, I of 1 and MA of 2)
+
+Random Forest Regressor:
+Month,Year, Zipcode, Unemployment Rate - year prior, Unemployment Rate - six months prior, Capital Improvement Petitions - year prior, 'Capital Improvement Petitions - six months prior,Capital Improvement Petitions - two years prior, Black population - year prior , Median Home Sale Price - year prior, Median Home Sale Price - six months prior
+
+Feature Importance for Random Forest Regressor
+- ZIP 94110
+- Unemployment Rate - year prior
+- Month
+- Unemployment Rate - six months prior
+- Capital Improvement Petitions - two years prior
+
 
 The final result of this project is code in the forecasting folder, which allows you to input the number of months into the future you'd like to see and return predicted eviction totals, by ZIP, for those months.
 
-[Watch me present them here!](https://youtu.be/MZoeI4p_Hq8?t=4977)
+[Watch me present my process and the results here!](https://youtu.be/MZoeI4p_Hq8?t=4977)
 
 ## My Process
 I started with a baseline of predicting a rolling mean for all evictions in SF. This did surprisingly well, save for a few major outliers, so I began to look at potential ways to harness the power of this macro success to predict well on a ZIP by ZIP basis, where totals by month are small and erratic.
