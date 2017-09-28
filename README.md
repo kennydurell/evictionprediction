@@ -16,10 +16,10 @@ I combined a top-down hierarchical ARIMAX model with a random forest regressor t
 
 The features in each model that ultimately produced the lowest RMSE for the cross validated time series data were:
 
-**ARIMAX Features**
+**ARIMAX Features**  
     Unemployment Rate - year prior (along with AR of 2, I of 1 and MA of 2)
 
-**Random Forest Regressor Features**
+**Random Forest Regressor Features**  
     Month,Year, Zipcode, Unemployment Rate - year prior, Unemployment Rate - six months prior, Capital Improvement Petitions - year prior, Capital Improvement Petitions - six months prior, Capital Improvement Petitions - two years prior, Black population - year prior , Median Home Sale Price - year prior, Median Home Sale Price - six months prior
 
 **Feature Importance for Random Forest Regressor**
