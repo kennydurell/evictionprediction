@@ -34,7 +34,7 @@ The final result of this project is code in the forecasting folder, which allows
 
 [Watch me present my process and the results here!](https://youtu.be/MZoeI4p_Hq8?t=4977)
 
-## My Process
+# My Process
 I started with a baseline of predicting a rolling mean for all evictions in SF. This did surprisingly well, save for a few major outliers, so I began to look at potential ways to harness the power of this macro success to predict well on a ZIP by ZIP basis, where totals by month are small and erratic.
 
 
